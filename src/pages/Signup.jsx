@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './styles.css';
 
 function Signup() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -11,6 +12,8 @@ function Signup() {
     api: ''
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const handleChange = (e) => {
     setFormData({
@@ -19,9 +22,38 @@ function Signup() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Signup attempt:', formData);
+    setError('');
+    setSuccess('');
+    
+    try {
+      const response = await fetch('http://localhost:5000/api/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to signup');
+      }
+
+      setSuccess('Signup successful! Redirecting to dashboard...');
+      // Store the token if it's provided in the response
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
+      // Navigate to dashboard
+      navigate('/dashboard');
+      
+    } catch (err) {
+      setError(err.message || 'Something went wrong during signup');
+      console.error('Signup error:', err);
+    }
   };
 
   return (
@@ -33,6 +65,8 @@ function Signup() {
       </div>
       <div className="auth-box">
         <h2>Sign Up</h2>
+        {error && <div className="error-message" style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
+        {success && <div className="success-message" style={{ color: 'green', marginBottom: '10px' }}>{success}</div>}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <input
@@ -114,5 +148,4 @@ function Signup() {
     </div>
   );
 }
-
 export default Signup;

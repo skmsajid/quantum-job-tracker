@@ -1,24 +1,69 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './styles.css';
 
 function Login() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+    setError('');
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Login attempt:', formData);
+    setLoading(true);
+    console.log('🚀 Starting login process...', { email: formData.email });
+
+    fetch('http://localhost:5000/api/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(formData)
+    })
+    .then(response => {
+      console.log('📡 Server response status:', response.status);
+      return response.json().then(data => ({
+        data,
+        status: response.status,
+        ok: response.ok
+      }));
+    })
+    .then(({ data, status, ok }) => {
+      if (!ok) {
+        console.log('❌ Login failed:', { status, error: data.error });
+        throw new Error(data.error || 'Invalid credentials');
+      }
+      console.log('✅ Login successful!', {
+        userId: data.userId,
+        username: data.username,
+        email: data.email
+      });
+      // Store user data in localStorage
+      localStorage.setItem('user', JSON.stringify(data));
+      // Navigate to dashboard after successful login
+      navigate('/dashboard');
+      return data;
+    })
+    .catch(err => {
+      console.log('⚠️ Error during login:', err.message);
+      setError(err.message || 'Invalid credentials');
+    })
+    .finally(() => {
+      setLoading(false);
+      console.log('🏁 Login process completed');
+    });
   };
 
   return (
@@ -70,7 +115,10 @@ function Login() {
               </button>
             </div>
           </div>
-          <button type="submit" className="auth-button">Login</button>
+          {error && <div className="error-message">{error}</div>}
+          <button type="submit" className="auth-button" disabled={loading}>
+            {loading ? 'Logging in...' : 'Login'}
+          </button>
         </form>
         <p className="auth-link">
           Need an account? <Link to="/signup">Sign up</Link>
